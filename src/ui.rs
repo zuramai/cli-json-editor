@@ -1,8 +1,9 @@
-use ratatui::{layout::{Constraint, Direction, Layout, Rect}, style::{Color, Style}, text::{Line, Span, Text}, widgets::{Block, Borders, List, ListItem, Paragraph}, Frame};
+use ratatui::{layout::{Constraint, Direction, Layout, Rect}, style::{Color, Style}, text::{Line, Span, Text}, widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap}, Frame};
 
 use crate::app::{App, CurrentScreen, CurrentlyEditing};
 
 pub fn ui(frame: &mut Frame, app: &App) {
+    // init layout
     let chunks = Layout::default()
         .constraints([
             Constraint::Length(3),
@@ -11,6 +12,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
         ])
         .split(frame.area());
 
+    // init title block
     let title_block = Block::default()
             .borders(Borders::ALL)
             .style(Style::default());
@@ -18,10 +20,12 @@ pub fn ui(frame: &mut Frame, app: &App) {
     let title = Paragraph::new(Text::styled(
         "Create new JSON", 
         Style::default().fg(Color::Green)
-    ));
+    ))
+    .block(title_block); // render paragraph in the title block
 
     frame.render_widget(title, chunks[0]);
 
+    // render json pairs as ListItem
     let mut list_items = Vec::<ListItem>::new();
     for key in app.pairs.keys() {
         list_items.push(
@@ -35,7 +39,6 @@ pub fn ui(frame: &mut Frame, app: &App) {
     }
     let list = List::new(list_items);
     frame.render_widget(list, chunks[1]);
-
 
     let current_navigation_text = vec![
         match app.current_screen {
@@ -74,6 +77,61 @@ pub fn ui(frame: &mut Frame, app: &App) {
 
     frame.render_widget(mode_footer, footer_chunks[0]);
     frame.render_widget(key_notes_footer, footer_chunks[1]);
+
+    // editing popup
+    if let Some(editing) = &app.currently_editing {
+        let popup_block = Block::default()
+            .title("Enter a new key-value pair")
+            .borders(Borders::NONE)
+            .style(Style::default().bg(Color::DarkGray));
+        let area = centered_rect(60, 25, frame.area());
+        frame.render_widget(popup_block, area);
+
+        let popup_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .margin(1)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(area);
+    
+        let mut key_block = Block::default().title("Key").borders(Borders::ALL);
+        let mut value_block = Block::default().title("Value").borders(Borders::ALL);
+        let active_style = Style::default().bg(Color::LightYellow).fg(Color::Black);
+    
+        match editing {
+            CurrentlyEditing::Key => key_block = key_block.style(active_style),
+            CurrentlyEditing::Value => value_block = value_block.style(active_style),
+        }
+        
+        let key_text = Paragraph::new(app.key_input.clone()).block(key_block);
+        frame.render_widget(key_text, popup_chunks[0]);
+
+        let value_text = Paragraph::new(app.key_input.clone()).block(value_block);
+        frame.render_widget(value_text, popup_chunks[1]);
+    }
+
+    // exit screen
+    if let CurrentScreen::Exiting = app.current_screen {
+        frame.render_widget(Clear, frame.area());
+        let popup_block = Block::default()
+            .title("Y/N")
+            .borders(Borders::NONE)
+            .style(Style::default().bg(Color::DarkGray));
+
+        let exit_text = Text::styled(
+            "Would you like to output the buffers as json? (y/n)",
+            Style::default().fg(Color::Red)
+        );
+
+        let exit_paragraph = Paragraph::new(exit_text)
+            .block(popup_block)
+            .wrap(Wrap {
+                trim: false
+            });
+        let area =  centered_rect(60, 25, frame.area());
+        frame.render_widget(exit_paragraph, area);
+    }
+
+    
 }
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()

@@ -45,6 +45,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                 app::CurrentScreen::Main => match key.code {
                     event::KeyCode::Char('e') => {
                         app.current_screen = CurrentScreen::Editing;
+                        app.currently_editing = Some(CurrentlyEditing::Key)
                     },
                     event::KeyCode::Char('q') => {
                         app.current_screen = CurrentScreen::Exiting;
@@ -52,11 +53,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                     _ => {}
                 },
                 app::CurrentScreen::Exiting => match key.code {
-                    event::KeyCode::Enter => {
-                        app.current_screen = CurrentScreen::Editing;
+                    event::KeyCode::Char('y') => {
+                        return Ok(true)
                     },
                     event::KeyCode::Char('q') => {
-                        app.current_screen = CurrentScreen::Exiting;
+                        return Ok(false)
                     },
                     _ => {}
                 },
