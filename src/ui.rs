@@ -7,7 +7,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .constraints([
             Constraint::Length(3),
-            Constraint::Length(1),
+            Constraint::Min(1),
             Constraint::Length(3),
         ])
         .split(frame.area());
@@ -105,7 +105,7 @@ pub fn ui(frame: &mut Frame, app: &App) {
         let key_text = Paragraph::new(app.key_input.clone()).block(key_block);
         frame.render_widget(key_text, popup_chunks[0]);
 
-        let value_text = Paragraph::new(app.key_input.clone()).block(value_block);
+        let value_text = Paragraph::new(app.value_input.clone()).block(value_block);
         frame.render_widget(value_text, popup_chunks[1]);
     }
 

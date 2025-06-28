@@ -56,7 +56,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                     event::KeyCode::Char('y') => {
                         return Ok(true)
                     },
-                    event::KeyCode::Char('q') => {
+                    event::KeyCode::Char('n') => {
                         return Ok(false)
                     },
                     _ => {}
@@ -69,8 +69,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                                     app.currently_editing = Some(CurrentlyEditing::Value)
                                 },
                                 CurrentlyEditing::Value => {
+                                    app.current_screen = CurrentScreen::Exiting;
                                     app.save_key_value();
-                                    app.current_screen = CurrentScreen::Main;
                                 }
                             }
                         }
