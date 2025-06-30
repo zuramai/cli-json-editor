@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use ratatui::crossterm::event::{self, KeyEvent, KeyEventKind};
+use serde_json::Value;
 
 
 pub enum CurrentScreen {
@@ -17,26 +17,73 @@ pub enum CurrentlyEditing {
 pub struct App {
     pub key_input: String,
     pub value_input: String,
-    pub pairs: HashMap<String, String>,
+    pub pairs: IndexMap<String, Value>,
     pub current_screen: CurrentScreen,
-    pub currently_editing: Option<CurrentlyEditing>
+    pub currently_editing: Option<CurrentlyEditing>,
+    pub value_input_error: Option<String>,
+    pub should_quit: bool,
+    pub should_print: bool,
 }
 
 impl App {
     pub fn new() -> App {
         App {
             key_input: String::new(),
-            pairs: HashMap::new(),
-            currently_editing: None,
             value_input: String::new(),
+            pairs: IndexMap::new(),
+            currently_editing: None,
             current_screen: CurrentScreen::Main,
+            value_input_error: None,
+            should_quit: false,
+            should_print: false,
         }
     }
     pub fn save_key_value(&mut self) {
-        self.pairs.insert(self.key_input.clone(), self.value_input.clone());
-        self.key_input = String::new();
-        self.value_input = String::new();
-        self.currently_editing = None;
+        match self.parse_value_input() {
+            Ok(json_value) => {
+                self.pairs.insert(self.key_input.clone(), json_value);
+                self.key_input = String::new();
+                self.value_input = String::new();
+                self.currently_editing = None;
+                self.value_input_error = None;
+            }
+            Err(error) => {
+                self.value_input_error = Some(format!("Invalid JSON: {}", error));
+            }
+        }
+    }
+
+    fn parse_value_input(&self) -> Result<Value, serde_json::Error> {
+        let trimmed = self.value_input.trim();
+        
+        if trimmed.is_empty() {
+            return Ok(Value::Null);
+        }
+        
+        match serde_json::from_str(trimmed) {
+            Ok(value) => Ok(value),
+            Err(_) => {
+                if !trimmed.starts_with(['{', '[', '"']) && 
+                   !trimmed.parse::<f64>().is_ok() && 
+                   !matches!(trimmed, "true" | "false" | "null") {
+                    Ok(Value::String(trimmed.to_string()))
+                } else {
+                    serde_json::from_str(trimmed)
+                }
+            }
+        }
+    }
+
+    pub fn format_json_value(&self, value: &Value) -> String {
+        match value {
+            Value::String(s) => format!("\"{}\"", s),
+            Value::Number(n) => n.to_string(),
+            Value::Bool(b) => b.to_string(),
+            Value::Null => "null".to_string(),
+            Value::Array(_) | Value::Object(_) => {
+                serde_json::to_string(value).unwrap_or_else(|_| "invalid".to_string())
+            }
+        }
     }
 
     pub fn toggle_editing(&mut self) {
@@ -50,9 +97,7 @@ impl App {
         };
     }
 
-    fn exit(&mut self) {
 
-    }
 
     pub fn print_json(&self) -> serde_json::Result<()> {
         let output = serde_json::to_string(&self.pairs)?;
@@ -114,10 +159,12 @@ impl App {
     pub fn handle_exiting_screen_input(&mut self, key: KeyEvent) {
         match key.code {
             event::KeyCode::Char('y') => {
-                return self.exit()
+                self.should_quit = true;
+                self.should_print = true;
             },
             event::KeyCode::Char('n') => {
-                return 
+                self.should_quit = true;
+                self.should_print = false;
             },
             _ => {}
         }
